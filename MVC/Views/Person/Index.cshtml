@@ -1,0 +1,327 @@
+﻿@{ Layout = "_Layout";}
+@section scripts {
+    <script>
+         
+        $(document).ready(function () {
+            var t = $('#table').DataTable({
+
+                "filter": true,
+                "orderMulti": false,
+                "ajax": {
+                    "url": "person/get",
+                    "type": "get",
+                    "datatype": "json",
+                    "dataSrc": "result"
+                },
+                "columnDefs": [
+                    {
+                        "targets": [1],
+                        "visible": false,
+                    },
+                    {
+                        "targets": [0, 3, 6, 7],
+                        "orderable": false,
+                    },
+                    {
+                        "targets": [0, 5, 7],
+                        "searchable": false,
+                    }
+                ],
+                "columns": [
+                    {
+                        'data': 'id',
+                        'defaultContent': ''
+                    },
+                    { "data": 'nik' },
+                    {
+                        "data": 'name',
+                        "render": function (data, type, row, meta) {
+                            return row['firstName'] + ' ' + row['lastName'];
+                        }
+                    },
+                    {
+                        "data": 'phone',
+                        "render": function (data) {
+                            var str = data;
+                            var re = /^0/;
+                            if (re.test(data)) {
+                                str = str.replace(re, "+62")
+                            }
+                            return str;
+                        }
+                    },
+                    {
+                        "data": 'birthDate',
+                    "render": function (data) {
+                        return moment(data).format('DD MMMM YYYY');
+                    }
+                    },
+                    { "data": 'salary',
+                    "render": $.fn.dataTable.render.number(',', '.', 2, 'Rp.') },
+                    { "data": 'email' },
+                    {
+                        "data": 'nik',
+                        "render": function (data, type, row, meta) {
+                            return '<a class="btn btn-sm btn-success" data-toggle="tooltip" data-placement="top"  title="Edit" onclick="Get(\'' + row['nik'] + '\')"><i class ="fa fa-edit"></i> Edit</a> ' +
+                                '<button class="btn btn-sm btn-danger" data-toggle="tooltip" data-placement="top"  title="Delete" onclick="Delete(\'' + row['nik'] + "', '" + row['firstName'] + "', '" + row['lastName'] + '\')"><i class ="fa fa-trash"></i> Delete</button>'
+                        }
+                    }
+                ],
+               
+                dom: 'Bfrtip',
+                buttons: [ 
+                    {
+                    extend: 'pdf',
+                    exportOptions: {
+                        columns: ':visible'
+                    }
+                },
+                {
+                    extend: 'csv',
+                    exportOptions: {
+                        columns: ':visible'
+                    }
+                },
+                {
+                    extend: 'excel',
+                    exportOptions: {
+                        columns: ':visible'
+                    }
+                },
+                    'colvis'
+                ]
+                
+            });
+            t.on('order.dt search.dt', function () {
+                t.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
+                    cell.innerHTML = i + 1;
+                    t.cell(cell).invalidate('dom');
+                });
+            }).draw();
+        });
+
+
+        $("#form").submit(function (e) {
+            debugger;
+            e.preventDefault(); 
+            var form = $(this);
+        
+            $.ajax({
+                type: "POST",
+                url: "Person/Post",
+                data: form.serialize(),
+                complete: function (data) {
+                    Swal.fire({
+                    position: 'center',
+                     icon: 'success',
+                     title: 'Your work has been saved',
+                    showConfirmButton: false,
+                        timer: 1500
+                     })
+                    $('#Post').modal('hide');
+                    $("#form").trigger('reset');
+                    $('#table').DataTable().ajax.reload();
+                },
+                fail: function (data) {
+                    alert("Data tidak kesimpan");
+                }
+            });
+        })
+        
+        function Delete(nik, firstName, lastName) {
+            $('#deleteModal').modal('show');
+            $('#deleteValue').html('Are you sure you want to delete ' + firstName + ' ' + lastName + '?');
+            $("#confirmDeleteButton").click(function (e) {
+                $.ajax({
+                    type: "POST",
+                    url: "person/delete",
+                    data: { 'key': nik },
+                    success: function (result) {
+                        $('#deleteModal').modal('hide');
+                        $('#table').DataTable().ajax.reload();
+                    }, 
+                    fail: function (result) {
+                        alert("data failed to delete !!");
+                    }
+                });
+            });
+        }
+
+        function Get(nik) {
+            $('#Put').modal('show');
+          
+        }
+    </script>
+}
+
+<div class="p-3">
+    <div class="row">
+        <h2 class="page-header">
+            Data
+            <small>Person</small>
+        </h2>
+
+    </div>
+    <button id="Summit" class="mb-3 btn btn-primary text-center" data-target="#Post" data-toggle="modal">
+        <i class="fas fa-user-plus"></i> Add
+    </button>
+    <p></p>
+    <table class="table table-sm table-striped table-bordered m-2" id="table">
+        <thead>
+            <tr>
+                <th>No.</th>
+                <th>NIK</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Birth Date</th>
+                <th>Salary</th>
+                <th>Email</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" role="dialog" id="Post">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addModalLabel">Add Person</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="form">
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="nik" for="Name" class="col col-3">NIK:</label>
+                            <input class="form-control col-8" name="nik" id="nik"  />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="firstName" class="col col-3">First Name:</label>
+                            <input class="form-control col-8" name="firstName" id="firstName" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="lastName" class="col col-3">Last Name:</label>
+                            <input class="form-control col-8" name="lastName" id="lastName" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="phone" class="col col-3">Phone:</label>
+                            <input class="form-control col-8" name="phone" id="phone" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="birthDate" class="col col-3">Birth Date:</label>
+                            <input type="date" class="form-control col-8" name="birthDate" id="birthDate"  />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="salary" class="col col-3">Salary:</label>
+                            <input type="number" class="form-control col-8" name="salary" id="salary"  />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="email" class="col col-3">Email:</label>
+                            <input type="email" class="form-control col-8" name="email" id="email" />
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+                <button class="btn btn-primary" type="submit" form="form" id="btnSummit">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" role="dialog" id="deleteModal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addModalLabel">Delete Person</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteValue"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+                <button class="btn btn-primary" id="confirmDeleteButton">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*<div class="modal fade" role="dialog" id="Put">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addModalLabel">Edit Person</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="form">
+                    
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="firstName" class="col col-3">First Name:</label>
+                            <input class="form-control col-8" name="firstName" id="firstName" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="lastName" class="col col-3">Last Name:</label>
+                            <input class="form-control col-8" name="lastName" id="lastName" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="phone" class="col col-3">Phone:</label>
+                            <input class="form-control col-8" name="phone" id="phone" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="birthDate" class="col col-3">Birth Date:</label>
+                            <input type="date" class="form-control col-8" name="birthDate" id="birthDate" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="salary" class="col col-3">Salary:</label>
+                            <input class="form-control col-8" name="salary" id="salary" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="row">
+                            <label id="email" class="col col-3">Email:</label>
+                            <input class="form-control col-8" name="email" id="email" />
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+                <button class="btn btn-primary" type="submit" form="form">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>*@
